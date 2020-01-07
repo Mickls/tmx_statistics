@@ -9,7 +9,10 @@
 
 import os
 import xml.sax
+import chardet
 
+from xml.sax.handler import ErrorHandler
+from xml.sax._exceptions import SAXParseException
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QApplication, QLabel
 
@@ -29,7 +32,7 @@ def get_file_list(path):
 def insert_table(item: list, tableWidget: QTableWidget):
     # tableWidget.clearContents()
     row = tableWidget.rowCount()
-    tableWidget.setRowCount(row+len(item))
+    tableWidget.setRowCount(row + len(item))
 
     i = row
     for file in item:
@@ -52,14 +55,24 @@ class TmxParser(xml.sax.ContentHandler):
     # 元素开始事件处理
     def startElement(self, tag, attributes):
         self.CurrentData = tag
-        if tag == "tuv" and attributes['xml:lang'] not in self.language:
-            self.language.append(attributes['xml:lang'])
+        if tag == "tuv":
+            if 'xml:lang' in attributes:
+                if attributes['xml:lang'] not in self.language:
+                    self.language.append(attributes['xml:lang'])
+            elif 'lang' in attributes:
+                if attributes['lang'] not in self.language:
+                    self.language.append(attributes['lang'])
         if tag == "tu":
             self.count += 1
 
     # 元素结束事件处理
     def endElement(self, tag):
         self.CurrentData = ""
+
+
+class ExceptHandler(ErrorHandler):
+    def fatalError(self, exceptions):
+        print(exceptions)
 
 
 class ParserTmx(QThread):
@@ -76,6 +89,7 @@ class ParserTmx(QThread):
         self.wait()
 
     def run(self):
+        create_file_list = []
         # 创建一个 XMLReader
         parser = xml.sax.make_parser()
         # turn off namespaces
@@ -83,18 +97,46 @@ class ParserTmx(QThread):
         # file_data = []
         file_count = self.tableWidget.rowCount()
         i = 0
+
         while i < file_count:
             file = self.tableWidget.item(i, 4).text()
-            Handler = TmxParser()
-            parser.setContentHandler(Handler)
-            parser.parse(file)
-            count = Handler.count
-            language = Handler.language
-            # print(count)
-            # file_data.append([language, count])
-            source = QTableWidgetItem(language[0])
-            target = QTableWidgetItem(language[1])
-            corpus_count = QTableWidgetItem(str(count))
+            dir_name = file.rsplit('/', 1)[0]
+            handler = TmxParser()
+            parser.setContentHandler(handler)
+            # parser.setErrorHandler(ExceptHandler())
+            while True:
+                try:
+                    parser.parse(file)
+                    parser.setErrorHandler(ErrorHandler())
+                    count = handler.count
+                    language = handler.language
+                    # print(count)
+                    # file_data.append([language, count])
+                    source = QTableWidgetItem(language[0])
+                    target = QTableWidgetItem(language[1])
+                    corpus_count = QTableWidgetItem(str(count))
+                    break
+                except ValueError as ex:
+                    self.value_except(ex, dir_name, create_file_list)
+                except SAXParseException as ex:
+                    error = str(ex).rsplit(":", 1)[-1].strip()
+                    print(error)
+                    if error == "not well-formed (invalid token)":
+                        parser.setErrorHandler(ExceptHandler())
+                    elif error == "encoding specified in XML declaration is incorrect":
+                        with open(file, 'rb') as f:
+                            t = f.readline()
+                        if chardet.detect(t)['encoding'] != 'UTF-16':
+                            source = QTableWidgetItem("tmx文件解析错误")
+                            target = QTableWidgetItem("tmx文件解析错误")
+                            corpus_count = QTableWidgetItem(str(0))
+                            break
+                        self.convert2utf8(file)
+                except Exception:
+                    source = QTableWidgetItem("tmx文件解析错误")
+                    target = QTableWidgetItem("tmx文件解析错误")
+                    corpus_count = QTableWidgetItem(str(0))
+                    break
             self.tableWidget.setItem(i, 1, source)
             self.tableWidget.setItem(i, 2, target)
             self.tableWidget.setItem(i, 3, corpus_count)
@@ -102,7 +144,31 @@ class ParserTmx(QThread):
 
             process = round(i / file_count * 100, 2)
             self.lab_progress.setText(f"当前已完成{process}%")
+        for f in create_file_list:
+            os.remove(f)
         self.sinOut.emit(None)
+
+    @staticmethod
+    def value_except(exception, dir_name, file_list):
+        filename = eval(str(exception).split(' ')[-1])
+        create_file = f"{dir_name}/{filename}"
+        with open(create_file, 'w') as f:
+            pass
+        if create_file not in file_list:
+            file_list.append(create_file)
+
+    @staticmethod
+    def convert2utf8(file):
+        file_bak = f"{file}.bak"
+        with open(file, 'r', encoding='utf16') as f:
+            with open(file_bak, 'w', encoding='utf8') as fl:
+                while True:
+                    t = f.readline()
+                    if not t:
+                        break
+                    fl.write(t)
+        os.remove(file)
+        os.rename(file_bak, file)
 
 
 class InsertData(QThread):

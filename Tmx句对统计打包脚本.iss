@@ -7,13 +7,13 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{6AB813A8-B6BE-440F-B9EF-0BE7AFF48485}
 AppName=Tmx句对统计
-AppVersion=0.0.0.3
+AppVersion=0.0.1.1
 ;AppVerName=Tmx句对统计 0.0.0.1
 AppPublisher=译讯科技有限责任公司
 DefaultDirName={pf}\Tmx句对统计
 DefaultGroupName=Tmx句对统计
 OutputDir=C:\Users\JC.YX\Desktop\小助手安装包\Tmx句对统计
-OutputBaseFilename=Tmx句对统计_setup_0.0.0.3
+OutputBaseFilename=Tmx句对统计_setup_0.0.1.1
 SetupIconFile=F:\tmx_statistics\statistics.ico
 Compression=lzma
 SolidCompression=yes

@@ -60,6 +60,13 @@ class TmxStatisticsMainWindow(QWidget, TmxStatisticsUi):
         :param QDropEvent:
         :return:
         """
+        if self.process:
+            self.process = False
+            self.lab_progress.setText("")
+            self.lab_data.setText("")
+            self.tableWidget.clearContents()
+            self.btn_export.setEnabled(False)
+            self.tableWidget.setRowCount(0)
         path = QDropEvent.mimeData().text().replace("\n", "").split("file:///")
         del path[0]
         if os.path.isdir(path[0]):
@@ -78,12 +85,6 @@ class TmxStatisticsMainWindow(QWidget, TmxStatisticsUi):
                     self.tableWidget.insertRow(row)
                     self.tableWidget.setItem(row, 0, file_name)
                     self.tableWidget.setItem(row, 4, QTableWidgetItem(p))
-        if self.process:
-            self.process = False
-            self.lab_progress.setText("")
-            self.lab_data.setText("")
-            self.tableWidget.clearContents()
-            self.btn_export.setEnabled(False)
 
     def reset(self):
         """
@@ -91,6 +92,7 @@ class TmxStatisticsMainWindow(QWidget, TmxStatisticsUi):
         :return:
         """
         self.tableWidget.clearContents()
+        self.tableWidget.setRowCount(0)
         self.btn_export.setEnabled(False)
         self.btn_statistics.setEnabled(True)
         self.btn_path.setEnabled(True)
