@@ -132,6 +132,11 @@ class ParserTmx(QThread):
                             corpus_count = QTableWidgetItem(str(0))
                             break
                         self.convert2utf8(file)
+                    else:
+                        source = QTableWidgetItem("tmx文件解析错误")
+                        target = QTableWidgetItem("tmx文件解析错误")
+                        corpus_count = QTableWidgetItem(str(0))
+                        break
                 except Exception:
                     source = QTableWidgetItem("tmx文件解析错误")
                     target = QTableWidgetItem("tmx文件解析错误")
